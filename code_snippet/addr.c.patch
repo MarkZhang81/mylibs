@@ -1,0 +1,64 @@
+diff --git a/drivers/infiniband/core/addr.c b/drivers/infiniband/core/addr.c
+index 5dbbef0b03..2db93031f8 100644
+--- a/drivers/infiniband/core/addr.c
++++ b/drivers/infiniband/core/addr.c
+@@ -616,10 +616,40 @@ done:
+ 	return ret;
+ }
+ 
++#define NIPQUAD(addr) \
++	((unsigned char *)&addr)[0], \
++		((unsigned char *)&addr)[1], \
++		((unsigned char *)&addr)[2], \
++		((unsigned char *)&addr)[3]
++
++#define NIP6(addr) \
++	ntohs((addr).s6_addr16[0]), \
++		ntohs((addr).s6_addr16[1]), \
++		ntohs((addr).s6_addr16[2]), \
++		ntohs((addr).s6_addr16[3]), \
++		ntohs((addr).s6_addr16[4]), \
++		ntohs((addr).s6_addr16[5]), \
++		ntohs((addr).s6_addr16[6]), \
++		ntohs((addr).s6_addr16[7])
++
++#define dump pr_info
++static inline void dump_sockaddr_in(struct sockaddr_in *in, const char *str)
++{
++	//dump("  %d: %pI4.%d\n", in->sin_family, in->sin_addr.s_addr, in->sin_port);
++	dump("  %s: %d - %d.%d.%d.%d, port %d\n", str, in->sin_family, NIPQUAD(in->sin_addr), in->sin_port);
++}
++static inline void dump_sockaddr_in6(struct sockaddr_in6 *in6, const char *str)
++{
++	//dump("  %d: %pI6.%d\n", in6->sin6_family, in6->sin6_addr, in6->sin6_port);
++	dump("  %s: %d - %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x, port %d\n", str, in6->sin6_family,
++	     NIP6(in6->sin6_addr), in6->sin6_port);
++}
++
+ static void process_one_req(struct work_struct *_work)
+ {
+ 	struct addr_req *req;
+ 	struct sockaddr *src_in, *dst_in;
++	unsigned char *p1, *p2;
+ 
+ 	req = container_of(_work, struct addr_req, work.work);
+ 
+@@ -641,6 +671,18 @@ static void process_one_req(struct work_struct *_work)
+ 		}
+ 	}
+ 
++	p1 = req->addr->src_dev_addr;
++	p2 = req->addr->dst_dev_addr;
++	pr_info("=DEBUG:%s:%d: req->status %d, dev_type %d, bound_dev_if %d, src_dev_addr: %02x:%02x:%02x:%02x:%02x:%02x, dst_dev_addr: %02x:%02x:%02x:%02x:%02x:%02x\n", __func__, __LINE__, req->status, req->addr->dev_type, req->addr->bound_dev_if, p1[0], p1[1], p1[2], p1[3], p1[4], p1[5],
++		p2[0], p2[1], p2[2], p2[3], p2[4], p2[5]);
++	if (req->src_addr.ss_family == AF_INET) {
++		dump_sockaddr_in((struct sockaddr_in *)&req->src_addr, "source");
++		dump_sockaddr_in((struct sockaddr_in *)&req->dst_addr, "dest");
++	} else {
++		dump_sockaddr_in6((struct sockaddr_in6 *)&req->src_addr, "source");
++		dump_sockaddr_in6((struct sockaddr_in6 *)&req->dst_addr, "dest");
++	}
++
+ 	req->callback(req->status, (struct sockaddr *)&req->src_addr,
+ 		req->addr, req->context);
+ 	req->callback = NULL;
