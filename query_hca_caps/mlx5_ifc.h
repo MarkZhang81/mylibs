@@ -1558,7 +1558,10 @@ struct mlx5_ifc_query_hca_cap_in_bits {
 	u8         op_mod[0x10];
 
 	u8         other_function[0x1];
-	u8         reserved_at_41[0xf];
+	u8         ec_vf_function[0x1];
+	u8         reserved_at_42[0x1];
+	u8         function_id_type[0x1];
+	u8         reserved_at_44[0xc];
 	u8         function_id[0x10];
 
 	u8         reserved_at_60[0x20];
